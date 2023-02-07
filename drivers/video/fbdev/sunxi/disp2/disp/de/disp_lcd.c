@@ -3075,6 +3075,43 @@ exit:
 	return usec;
 }
 
+typedef struct
+{
+	volatile unsigned int Timing0;
+	volatile unsigned int Timing1;
+	volatile unsigned int Timing2;
+	volatile unsigned int Timing3;
+}RegTypeDef;
+
+static void set_lcd_timings(unsigned int dwLcdRegBase, struct disp_video_timings* pTimings)
+{
+	RegTypeDef* reg;
+	unsigned int dwWidth, dwHeight;
+	unsigned int dwHT, dwHBP;
+	unsigned int dwVT, dwVBP;
+	unsigned int dwHSPW, dwVSPW;
+
+	reg = (RegTypeDef*)(dwLcdRegBase + 0x48);
+	
+	dwWidth = pTimings->x_res;
+	dwHSPW = pTimings->hor_sync_time;
+	dwHBP = pTimings->hor_back_porch + pTimings->hor_sync_time;	//在官方文档里：hbp = hbp + hspw，然而在全志的代码里面又将hspw其减去，所以在这里需要加回来
+	dwHT = pTimings->hor_total_time;
+
+	dwHeight = pTimings->y_res;;
+	dwVSPW = pTimings->ver_sync_time;
+	dwVBP = pTimings->ver_back_porch + pTimings->ver_sync_time;
+	dwVT = pTimings->ver_total_time;
+
+	reg->Timing0 = ((dwWidth - 1) << 16) | (dwHeight - 1);
+	reg->Timing1 = ((dwHT - 1) << 16) | (dwHBP - 1);
+	reg->Timing2 = (((dwVT - 1) * 2) << 16) | (dwVBP - 1);
+	reg->Timing3 = ((dwHSPW - 1) << 16) | (dwVSPW - 1);
+
+	printk("width: %d, hspw: %d, hbp: %d, ht: %d\n", dwWidth, dwHSPW, dwHBP, dwHT);
+	printk("height: %d, vspw: %d, vbp: %d, vt: %d\n", dwHeight, dwVSPW, dwVBP, dwVT);
+}
+
 s32 disp_init_lcd(struct disp_bsp_init_para *para)
 {
 	u32 num_devices;
@@ -3223,6 +3260,7 @@ s32 disp_init_lcd(struct disp_bsp_init_para *para)
 			  disp_close_eink_panel_task);
 #endif
 		disp_lcd_init(lcd, lcd->disp);
+		set_lcd_timings(para->reg_base[DISP_MOD_LCD0], &lcd->timings);
 		disp_device_register(lcd);
 #if defined(CONFIG_DISP2_LCD_ESD_DETECT)
 		INIT_WORK(&lcdp->reflush_work, disp_lcd_reflush_work);
