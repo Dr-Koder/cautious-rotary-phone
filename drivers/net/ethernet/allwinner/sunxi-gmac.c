@@ -776,7 +776,7 @@ static int geth_phy_init(struct net_device *ndev)
 	}
 
 	//phydev->supported &= PHY_GBIT_FEATURES;
-	phydev->is_gigabit_capable = 1;
+	phydev->is_gigabit_capable = 0;//1;
 	//phydev->advertising = phydev->supported;
 
 resume:
